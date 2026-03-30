@@ -6,9 +6,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { tarotCards, TarotCard } from './tarotData';
-import { Sparkles, Calendar, User, ChevronRight, RotateCcw, Heart, Briefcase, History, BookOpen, X, Trash2 } from 'lucide-react';
+import { Sparkles, Calendar, User, ChevronRight, RotateCcw, Heart, Briefcase, History, BookOpen, X, Trash2, Share2, Copy, Check } from 'lucide-react';
 
-type Screen = 'landing' | 'selection' | 'reading' | 'history' | 'library';
+type Screen = 'landing' | 'shuffling' | 'selection' | 'reading' | 'history' | 'library';
 type ReadingType = 'general' | 'love' | 'career';
 
 interface SavedReading {
@@ -29,6 +29,38 @@ export default function App() {
   const [shuffledCards, setShuffledCards] = useState<TarotCard[]>([]);
   const [history, setHistory] = useState<SavedReading[]>([]);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<SavedReading | null>(null);
+  const [isCopying, setIsCopying] = useState(false);
+
+  // StarDust Background Component
+  const StarDust = () => {
+    return (
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        {[...Array(50)].map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ 
+              x: Math.random() * window.innerWidth, 
+              y: Math.random() * window.innerHeight,
+              opacity: Math.random() * 0.5,
+              scale: Math.random() * 0.5 + 0.5
+            }}
+            animate={{ 
+              y: [null, Math.random() * -100 - 50],
+              opacity: [null, 0],
+              scale: [null, 0]
+            }}
+            transition={{ 
+              duration: Math.random() * 10 + 10, 
+              repeat: Infinity, 
+              ease: "linear",
+              delay: Math.random() * 20
+            }}
+            className="absolute w-1 h-1 bg-[#d4af37] rounded-full blur-[1px]"
+          />
+        ))}
+      </div>
+    );
+  };
 
   // Load history on mount
   useEffect(() => {
@@ -105,9 +137,31 @@ export default function App() {
   const handleStart = (e: React.FormEvent) => {
     e.preventDefault();
     if (userData.name && userData.birthDate) {
-      // Shuffle cards every time we start selection
-      setShuffledCards([...tarotCards].sort(() => Math.random() - 0.5));
-      setScreen('selection');
+      setScreen('shuffling');
+      setTimeout(() => {
+        setShuffledCards([...tarotCards].sort(() => Math.random() - 0.5));
+        setScreen('selection');
+      }, 3000);
+    }
+  };
+
+  const handleShare = async () => {
+    const text = `Mistik Kehanet'te fal baktırdım! 🌟\n\nKartlarım: ${selectedCards.map(c => c.name).join(', ')}\n\nSen de kaderini öğrenmek ister misin?`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Mistik Kehanet Tarot Falı',
+          text: text,
+          url: window.location.href,
+        });
+      } catch (err) {
+        console.log('Sharing failed', err);
+      }
+    } else {
+      navigator.clipboard.writeText(text);
+      setIsCopying(true);
+      setTimeout(() => setIsCopying(false), 2000);
     }
   };
 
@@ -238,6 +292,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#050208] text-[#f3e8ff] font-serif selection:bg-[#d4af37]/30 overflow-x-hidden">
+      <StarDust />
       {/* Background Atmosphere */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] rounded-full bg-[#2e1065] blur-[150px] opacity-30" />
@@ -491,6 +546,51 @@ export default function App() {
             </div>
           )}
 
+          {screen === 'shuffling' && (
+            <motion.div
+              key="shuffling"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-center"
+            >
+              <div className="relative w-64 h-96 mx-auto mb-12">
+                {[...Array(6)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    animate={{ 
+                      rotate: [i * 10, i * 10 + 360],
+                      x: [0, Math.sin(i) * 50, 0],
+                      y: [0, Math.cos(i) * 50, 0],
+                    }}
+                    transition={{ 
+                      duration: 3, 
+                      repeat: Infinity, 
+                      ease: "easeInOut",
+                      delay: i * 0.2
+                    }}
+                    className="absolute inset-0 bg-[#1a0b2e] border-2 border-[#d4af37]/20 rounded-2xl shadow-[0_0_30px_rgba(212,175,55,0.1)]"
+                  >
+                    <div className="w-full h-full border border-[#d4af37]/5 rounded-xl flex items-center justify-center">
+                      <Sparkles className="w-8 h-8 text-[#d4af37]/10" />
+                    </div>
+                  </motion.div>
+                ))}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="text-[#d4af37] font-bold uppercase tracking-[0.5em] text-xs"
+                  >
+                    Karıştırılıyor...
+                  </motion.div>
+                </div>
+              </div>
+              <h2 className="text-3xl font-light italic text-[#d4af37] mb-4">Enerjin Kartlara Aktarılıyor</h2>
+              <p className="text-white/40 max-w-xs mx-auto">Zihnini boşalt ve sadece niyetine odaklan. Evren senin için hazırlanıyor.</p>
+            </motion.div>
+          )}
+
           {screen === 'selection' && (
             <motion.div
               key="selection"
@@ -647,13 +747,20 @@ export default function App() {
                     </div>
                   </div>
                   
-                  <div className="mt-12 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-center gap-6">
+                  <div className="mt-12 pt-8 border-t border-white/5 flex flex-wrap items-center justify-center gap-6">
                     <button
                       onClick={reset}
                       className="inline-flex items-center gap-3 text-[#d4af37] hover:text-white transition-all uppercase tracking-[0.3em] text-[10px] font-black group"
                     >
                       <RotateCcw className="w-4 h-4 group-hover:rotate-[-180deg] transition-transform duration-700" />
                       Yeni Bir Yolculuğa Başla
+                    </button>
+                    <button
+                      onClick={handleShare}
+                      className="inline-flex items-center gap-3 text-[#d4af37] hover:text-white transition-all uppercase tracking-[0.3em] text-[10px] font-black group"
+                    >
+                      {isCopying ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
+                      {isCopying ? 'Kopyalandı!' : 'Kehaneti Paylaş'}
                     </button>
                     <button
                       onClick={() => setScreen('history')}
