@@ -3,19 +3,80 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { tarotCards, TarotCard } from './tarotData';
-import { Sparkles, Calendar, User, ChevronRight, RotateCcw } from 'lucide-react';
+import { Sparkles, Calendar, User, ChevronRight, RotateCcw, Heart, Briefcase, History, BookOpen, X, Trash2 } from 'lucide-react';
 
-type Screen = 'landing' | 'selection' | 'reading';
+type Screen = 'landing' | 'selection' | 'reading' | 'history' | 'library';
+type ReadingType = 'general' | 'love' | 'career';
+
+interface SavedReading {
+  id: string;
+  date: string;
+  userName: string;
+  readingType: ReadingType;
+  cards: TarotCard[];
+  interpretation: string;
+}
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('landing');
+  const [readingType, setReadingType] = useState<ReadingType>('general');
   const [userData, setUserData] = useState({ name: '', birthDate: '' });
   const [selectedCards, setSelectedCards] = useState<TarotCard[]>([]);
   const [revealed, setRevealed] = useState(false);
   const [shuffledCards, setShuffledCards] = useState<TarotCard[]>([]);
+  const [history, setHistory] = useState<SavedReading[]>([]);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<SavedReading | null>(null);
+
+  // Load history on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('tarot_history');
+    if (saved) {
+      try {
+        setHistory(JSON.parse(saved));
+      } catch (e) {
+        console.error("History load error", e);
+      }
+    }
+  }, []);
+
+  const saveReading = (cards: TarotCard[], interpretation: string) => {
+    const newReading: SavedReading = {
+      id: Date.now().toString(),
+      date: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      userName: userData.name,
+      readingType,
+      cards,
+      interpretation
+    };
+    const updatedHistory = [newReading, ...history].slice(0, 20); // Keep last 20
+    setHistory(updatedHistory);
+    localStorage.setItem('tarot_history', JSON.stringify(updatedHistory));
+  };
+
+  const deleteHistoryItem = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = history.filter(item => item.id !== id);
+    setHistory(updated);
+    localStorage.setItem('tarot_history', JSON.stringify(updated));
+  };
+
+  const calculateLifePathNumber = (dateStr: string) => {
+    const digits = dateStr.replace(/\D/g, '');
+    let sum = digits.split('').reduce((acc, d) => acc + parseInt(d), 0);
+    
+    while (sum > 9 && sum !== 11 && sum !== 22) {
+      sum = sum.toString().split('').reduce((acc, d) => acc + parseInt(d), 0);
+    }
+    return sum;
+  };
+
+  const lifePathNumber = useMemo(() => {
+    if (!userData.birthDate) return null;
+    return calculateLifePathNumber(userData.birthDate);
+  }, [userData.birthDate]);
 
   const getZodiacSign = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -70,38 +131,93 @@ export default function App() {
     setRevealed(false);
     setUserData({ name: '', birthDate: '' });
     setShuffledCards([]);
+    setReadingType('general');
   };
 
   const localReading = useMemo(() => {
     if (selectedCards.length < 3 || !zodiac) return null;
 
-    const [past, present, future] = selectedCards;
+    const [c1, c2, c3] = selectedCards;
     
-    const intros = [
-      `Sevgili ${userData.name}, ${zodiac.name} burcunun ${zodiac.element} enerjisi bugün seninle çok güçlü bir bağ kuruyor.`,
-      `Kozmik akışta ${userData.name}, ${zodiac.element} elementinin rehberliğinde ruhun derin bir yolculuğa çıkıyor.`,
-      `${zodiac.name} burcunun bilgeliğiyle ${userData.name}, evrenin sana fısıldadığı bu kadim mesajlara kulak ver.`
-    ];
+    const intros = {
+      general: [
+        `Sevgili ${userData.name}, ${zodiac.name} burcunun ${zodiac.element} enerjisi bugün seninle çok güçlü bir bağ kuruyor.`,
+        `Kozmik akışta ${userData.name}, ${zodiac.element} elementinin rehberliğinde ruhun derin bir yolculuğa çıkıyor.`,
+        `${zodiac.name} burcunun bilgeliğiyle ${userData.name}, evrenin sana fısıldadığı bu kadim mesajlara kulak ver.`
+      ],
+      love: [
+        `Aşkın kozmik frekansında ${userData.name}, kalbinin sesini ${zodiac.element} elementinin duyarlılığıyla dinliyoruz.`,
+        `Gönül işlerinde ${zodiac.name} burcunun tutkusu ve ${zodiac.element} enerjisi senin için birleşiyor.`,
+        `Sevgi yolculuğunda ${userData.name}, yıldızlar kalbindeki en derin arzuları aydınlatıyor.`
+      ],
+      career: [
+        `Başarı ve kariyer yolunda ${userData.name}, ${zodiac.name} burcunun azmi senin en büyük rehberin.`,
+        `İş hayatının karmaşasında ${zodiac.element} elementinin dengeleyici gücü sana yön veriyor.`,
+        `Hedeflerine giden yolda ${userData.name}, evrenin stratejik fısıltılarını dinleme zamanı.`
+      ]
+    };
 
-    const connections = [
-      `Geçmişten gelen ${past.name} enerjisi, şu anki ${present.name} durumunu şekillendirmiş görünüyor.`,
-      `${past.name} kartının bıraktığı izler, bugün ${present.name} ile yeni bir anlam kazanıyor.`,
-      `Ruhun ${past.name} ile olgunlaşırken, şimdi ${present.name} ile gerçek gücünü keşfediyor.`
-    ];
+    const connections = {
+      general: [
+        `Geçmişten gelen ${c1.name} enerjisi, şu anki ${c2.name} durumunu şekillendirmiş görünüyor.`,
+        `${c1.name} kartının bıraktığı izler, bugün ${c2.name} ile yeni bir anlam kazanıyor.`,
+        `Ruhun ${c1.name} ile olgunlaşırken, şimdi ${c2.name} ile gerçek gücünü keşfediyor.`
+      ],
+      love: [
+        `Kalbindeki ${c1.name} hissi, şu anki ilişkinizde ${c2.name} olarak tezahür ediyor.`,
+        `Duygusal geçmişindeki ${c1.name}, bugün partnerinle arandaki ${c2.name} bağını güçlendiriyor.`,
+        `Aşk hayatında ${c1.name} ile başlayan döngü, şimdi ${c2.name} ile yeni bir boyuta evriliyor.`
+      ],
+      career: [
+        `Mesleki geçmişindeki ${c1.name} tecrübesi, şu anki projelerinde ${c2.name} olarak sana ışık tutuyor.`,
+        `Kariyer basamaklarındaki ${c1.name} adımı, bugün seni ${c2.name} zirvesine hazırlıyor.`,
+        `İş dünyasında ${c1.name} ile kurduğun temel, şimdi ${c2.name} ile meyvelerini veriyor.`
+      ]
+    };
 
-    const futureInsights = [
-      `Gelecekte beliren ${future.name}, ${zodiac.name} burcunun ışığıyla birleşerek hayatında mucizevi bir dönüşüm başlatacak.`,
-      `${future.name} kartı, önündeki yolda sana yepyeni kapılar açacak ve ${zodiac.element} elementinin gücüyle seni destekleyecek.`,
-      `Bu kozmik dizilim, ${future.name} ile hayallerine giden yolda sana rehberlik edecek.`
-    ];
+    const futureInsights = {
+      general: [
+        `Gelecekte beliren ${c3.name}, ${zodiac.name} burcunun ışığıyla birleşerek hayatında mucizevi bir dönüşüm başlatacak.`,
+        `${c3.name} kartı, önündeki yolda sana yepyeni kapılar açacak ve ${zodiac.element} elementinin gücüyle seni destekleyecek.`,
+        `Bu kozmik dizilim, ${c3.name} ile hayallerine giden yolda sana rehberlik edecek.`
+      ],
+      love: [
+        `Aşkın geleceğinde ${c3.name} parlıyor; bu kart kalbindeki tüm soruların cevabı olacak.`,
+        `Sevgi dolu günlerin müjdecisi ${c3.name}, ilişkinizde yepyeni bir baharın habercisi.`,
+        `Gelecekteki ${c3.name} enerjisi, ruh eşinle olan bağını ebedi bir huzura taşıyacak.`
+      ],
+      career: [
+        `Kariyerinin zirvesinde ${c3.name} seni bekliyor; emeklerinin karşılığını alma vaktin yaklaşıyor.`,
+        `İş hayatındaki geleceğin ${c3.name} ile aydınlanıyor; büyük bir başarı kapıda.`,
+        `Gelecekteki ${c3.name} vizyonu, seni mesleğinde arzuladığın o saygın noktaya ulaştıracak.`
+      ]
+    };
 
     const randomIdx = (arr: any[]) => Math.floor(Math.random() * arr.length);
 
     return (
       <div className="space-y-6">
-        <p>{intros[randomIdx(intros)]}</p>
-        <p>{connections[randomIdx(connections)]}</p>
-        <p>{futureInsights[randomIdx(futureInsights)]}</p>
+        <p>{intros[readingType][randomIdx(intros[readingType])]}</p>
+        <p>{connections[readingType][randomIdx(connections[readingType])]}</p>
+        <p>{futureInsights[readingType][randomIdx(futureInsights[readingType])]}</p>
+        <div className="pt-6 border-t border-[#d4af37]/20">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-[#d4af37]/60 mb-2 font-bold">Numerolojik Rehberlik</p>
+          <p className="text-base text-[#f3e8ff]/80 italic">
+            Hayat Yolu Sayın olan <span className="text-[#d4af37] font-bold">{lifePathNumber}</span>, bu dönemde sana {
+              lifePathNumber === 1 ? 'liderlik etmen ve kendi yolunu çizmen gerektiğini' :
+              lifePathNumber === 2 ? 'işbirliği yapmanın ve uyumu yakalamanın önemini' :
+              lifePathNumber === 3 ? 'yaratıcılığını konuşturman ve kendini ifade etmen gerektiğini' :
+              lifePathNumber === 4 ? 'disiplinli olman ve sağlam temeller atman gerektiğini' :
+              lifePathNumber === 5 ? 'özgürlüğüne sahip çıkman ve değişime açık olman gerektiğini' :
+              lifePathNumber === 6 ? 'sorumluluk almanın ve sevdiklerine odaklanmanın vaktini' :
+              lifePathNumber === 7 ? 'içsel yolculuğuna çıkman ve derinleşmen gerektiğini' :
+              lifePathNumber === 8 ? 'gücünü eline alman ve bolluğu kucaklaman gerektiğini' :
+              lifePathNumber === 9 ? 'tamamlanma sürecinde olduğunu ve şifalanman gerektiğini' :
+              lifePathNumber === 11 ? 'sezgilerine güvenmen ve ilham vermen gerektiğini' :
+              'büyük vizyonlar kurman ve insanlığa hizmet etmen gerektiğini'
+            } fısıldıyor.
+          </p>
+        </div>
         <p className="pt-4 border-t border-white/5 text-[#d4af37] font-bold italic">
           Günün Tavsiyesi: {zodiac.element === 'Ateş' ? 'Cesaretini topla ve harekete geç.' : 
                            zodiac.element === 'Su' ? 'Duygularının sesini dinle ve akışta kal.' : 
@@ -110,7 +226,15 @@ export default function App() {
         </p>
       </div>
     );
-  }, [selectedCards, zodiac, userData.name]);
+  }, [selectedCards, zodiac, userData.name, readingType, lifePathNumber]);
+
+  // Save to history when reading is revealed
+  useEffect(() => {
+    if (revealed && screen === 'reading' && selectedCards.length === 3 && localReading) {
+      const textContent = `Sevgili ${userData.name}, bu fal senin için özel olarak yorumlandı.`;
+      saveReading(selectedCards, textContent);
+    }
+  }, [revealed]);
 
   return (
     <div className="min-h-screen bg-[#050208] text-[#f3e8ff] font-serif selection:bg-[#d4af37]/30 overflow-x-hidden">
@@ -122,6 +246,28 @@ export default function App() {
       </div>
 
       <main className="relative z-10 container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
+        {/* Navigation Bar */}
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 flex items-center gap-2 p-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl z-50">
+          <button 
+            onClick={() => setScreen('landing')}
+            className={`px-4 py-2 rounded-full text-[10px] uppercase tracking-widest font-bold transition-all ${screen === 'landing' ? 'bg-[#d4af37] text-[#1a0b2e]' : 'text-[#d4af37]/60 hover:text-[#d4af37]'}`}
+          >
+            Ana Sayfa
+          </button>
+          <button 
+            onClick={() => setScreen('history')}
+            className={`px-4 py-2 rounded-full text-[10px] uppercase tracking-widest font-bold transition-all ${screen === 'history' ? 'bg-[#d4af37] text-[#1a0b2e]' : 'text-[#d4af37]/60 hover:text-[#d4af37]'}`}
+          >
+            Geçmiş
+          </button>
+          <button 
+            onClick={() => setScreen('library')}
+            className={`px-4 py-2 rounded-full text-[10px] uppercase tracking-widest font-bold transition-all ${screen === 'library' ? 'bg-[#d4af37] text-[#1a0b2e]' : 'text-[#d4af37]/60 hover:text-[#d4af37]'}`}
+          >
+            Kütüphane
+          </button>
+        </div>
+
         <AnimatePresence mode="wait">
           {screen === 'landing' && (
             <motion.div
@@ -153,7 +299,7 @@ export default function App() {
                 <p className="text-[10px] text-[#d4af37]/60 uppercase tracking-[0.4em] font-bold">Yıldızların Rehberliği</p>
               </div>
 
-              <form onSubmit={handleStart} className="space-y-8">
+              <form onSubmit={handleStart} className="space-y-6">
                 <div className="space-y-3">
                   <label className="text-[10px] uppercase tracking-[0.2em] text-[#d4af37]/50 ml-1 font-bold">Ruhun Adı</label>
                   <div className="relative group">
@@ -183,6 +329,31 @@ export default function App() {
                   </div>
                 </div>
 
+                <div className="space-y-3">
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#d4af37]/50 ml-1 font-bold">Açılım Türü</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'general', icon: Sparkles, label: 'Genel' },
+                      { id: 'love', icon: Heart, label: 'Aşk' },
+                      { id: 'career', icon: Briefcase, label: 'İş' }
+                    ].map((type) => (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => setReadingType(type.id as ReadingType)}
+                        className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
+                          readingType === type.id 
+                            ? 'bg-[#d4af37]/20 border-[#d4af37] text-[#d4af37]' 
+                            : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                        }`}
+                      >
+                        <type.icon className="w-5 h-5" />
+                        <span className="text-[10px] uppercase font-bold tracking-widest">{type.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <button
                   type="submit"
                   className="w-full bg-gradient-to-r from-[#d4af37] to-[#b8860b] hover:from-[#f1c40f] hover:to-[#d4af37] text-[#1a0b2e] font-black py-5 rounded-2xl transition-all shadow-[0_0_30px_rgba(212,175,55,0.2)] flex items-center justify-center gap-3 group uppercase tracking-widest text-sm"
@@ -192,6 +363,132 @@ export default function App() {
                 </button>
               </form>
             </motion.div>
+          )}
+
+          {screen === 'history' && (
+            <motion.div
+              key="history"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="max-w-4xl w-full"
+            >
+              <div className="text-center mb-12">
+                <History className="w-12 h-12 text-[#d4af37] mx-auto mb-4" />
+                <h2 className="text-4xl font-bold text-[#d4af37]">Geçmiş Kehanetler</h2>
+                <p className="text-white/40 mt-2">Ruhunun daha önce geçtiği yollar...</p>
+              </div>
+
+              {history.length === 0 ? (
+                <div className="text-center p-20 glass-panel rounded-[40px] border border-white/10">
+                  <p className="text-white/20 italic">Henüz bir kehanet kaydedilmedi.</p>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-6">
+                  {history.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      whileHover={{ y: -5 }}
+                      onClick={() => setSelectedHistoryItem(item)}
+                      className="glass-panel p-6 rounded-3xl border border-white/10 cursor-pointer group relative"
+                    >
+                      <button 
+                        onClick={(e) => deleteHistoryItem(item.id, e)}
+                        className="absolute top-4 right-4 p-2 rounded-full bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 rounded-2xl bg-[#d4af37]/10 flex items-center justify-center">
+                          {item.readingType === 'love' ? <Heart className="w-6 h-6 text-[#d4af37]" /> : 
+                           item.readingType === 'career' ? <Briefcase className="w-6 h-6 text-[#d4af37]" /> : 
+                           <Sparkles className="w-6 h-6 text-[#d4af37]" />}
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-widest text-[#d4af37] font-bold">{item.readingType === 'love' ? 'Aşk Falı' : item.readingType === 'career' ? 'İş Falı' : 'Genel Fal'}</p>
+                          <p className="text-white/40 text-xs">{item.date}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mb-4">
+                        {item.cards.map((card, i) => (
+                          <div key={i} className="w-10 h-14 rounded-lg overflow-hidden border border-white/10">
+                            <img src={card.image} alt={card.name} className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-white/60 text-sm line-clamp-2 italic">"{item.cards.map(c => c.name).join(', ')}"</p>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {screen === 'library' && (
+            <motion.div
+              key="library"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="max-w-6xl w-full"
+            >
+              <div className="text-center mb-12">
+                <BookOpen className="w-12 h-12 text-[#d4af37] mx-auto mb-4" />
+                <h2 className="text-4xl font-bold text-[#d4af37]">Bilgelik Kütüphanesi</h2>
+                <p className="text-white/40 mt-2">Kadim sembollerin derin anlamları...</p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                {tarotCards.map((card) => (
+                  <motion.div
+                    key={card.id}
+                    whileHover={{ y: -10 }}
+                    className="glass-panel p-4 rounded-3xl border border-white/10 group"
+                  >
+                    <div className="aspect-[2/3] rounded-2xl overflow-hidden mb-4 border border-white/5">
+                      <img src={card.image} alt={card.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    </div>
+                    <h4 className="text-[#d4af37] font-bold text-sm mb-1">{card.name}</h4>
+                    <p className="text-[10px] text-white/40 uppercase tracking-widest leading-tight">{card.meaning}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {selectedHistoryItem && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#050208]/90 backdrop-blur-md">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="max-w-2xl w-full glass-panel p-10 rounded-[48px] border border-[#d4af37]/30 relative max-h-[90vh] overflow-y-auto"
+              >
+                <button 
+                  onClick={() => setSelectedHistoryItem(null)}
+                  className="absolute top-6 right-6 p-2 rounded-full bg-white/5 text-white/40 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+                <div className="text-center mb-8">
+                  <p className="text-[10px] uppercase tracking-[0.5em] text-[#d4af37] font-black mb-2">{selectedHistoryItem.date}</p>
+                  <h3 className="text-3xl font-bold text-white">Geçmiş Kehanet</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-4 mb-8">
+                  {selectedHistoryItem.cards.map((card, i) => (
+                    <div key={i} className="flex flex-col items-center">
+                      <div className="w-full aspect-[2/3] rounded-2xl overflow-hidden border border-white/10 mb-2">
+                        <img src={card.image} alt={card.name} className="w-full h-full object-cover" />
+                      </div>
+                      <p className="text-[10px] text-[#d4af37] font-bold uppercase text-center">{card.name}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-4 text-white/70 italic text-lg leading-relaxed text-center">
+                  <p>{selectedHistoryItem.interpretation}</p>
+                  <p className="text-sm text-white/40 mt-6">Bu kehanet ruhunun o anki enerjisini yansıtmaktadır.</p>
+                </div>
+              </motion.div>
+            </div>
           )}
 
           {screen === 'selection' && (
@@ -350,13 +647,20 @@ export default function App() {
                     </div>
                   </div>
                   
-                  <div className="mt-12 pt-8 border-t border-white/5">
+                  <div className="mt-12 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-center gap-6">
                     <button
                       onClick={reset}
                       className="inline-flex items-center gap-3 text-[#d4af37] hover:text-white transition-all uppercase tracking-[0.3em] text-[10px] font-black group"
                     >
                       <RotateCcw className="w-4 h-4 group-hover:rotate-[-180deg] transition-transform duration-700" />
                       Yeni Bir Yolculuğa Başla
+                    </button>
+                    <button
+                      onClick={() => setScreen('history')}
+                      className="inline-flex items-center gap-3 text-white/40 hover:text-[#d4af37] transition-all uppercase tracking-[0.3em] text-[10px] font-black group"
+                    >
+                      <History className="w-4 h-4" />
+                      Geçmişe Göz At
                     </button>
                   </div>
                 </motion.div>
