@@ -54,6 +54,7 @@ export default function App() {
     if (selectedCards.length < 3 && !selectedCards.find(c => c.id === card.id)) {
       const newSelection = [...selectedCards, card];
       setSelectedCards(newSelection);
+      
       if (newSelection.length === 3) {
         setTimeout(() => {
           setScreen('reading');
@@ -70,6 +71,46 @@ export default function App() {
     setUserData({ name: '', birthDate: '' });
     setShuffledCards([]);
   };
+
+  const localReading = useMemo(() => {
+    if (selectedCards.length < 3 || !zodiac) return null;
+
+    const [past, present, future] = selectedCards;
+    
+    const intros = [
+      `Sevgili ${userData.name}, ${zodiac.name} burcunun ${zodiac.element} enerjisi bugün seninle çok güçlü bir bağ kuruyor.`,
+      `Kozmik akışta ${userData.name}, ${zodiac.element} elementinin rehberliğinde ruhun derin bir yolculuğa çıkıyor.`,
+      `${zodiac.name} burcunun bilgeliğiyle ${userData.name}, evrenin sana fısıldadığı bu kadim mesajlara kulak ver.`
+    ];
+
+    const connections = [
+      `Geçmişten gelen ${past.name} enerjisi, şu anki ${present.name} durumunu şekillendirmiş görünüyor.`,
+      `${past.name} kartının bıraktığı izler, bugün ${present.name} ile yeni bir anlam kazanıyor.`,
+      `Ruhun ${past.name} ile olgunlaşırken, şimdi ${present.name} ile gerçek gücünü keşfediyor.`
+    ];
+
+    const futureInsights = [
+      `Gelecekte beliren ${future.name}, ${zodiac.name} burcunun ışığıyla birleşerek hayatında mucizevi bir dönüşüm başlatacak.`,
+      `${future.name} kartı, önündeki yolda sana yepyeni kapılar açacak ve ${zodiac.element} elementinin gücüyle seni destekleyecek.`,
+      `Bu kozmik dizilim, ${future.name} ile hayallerine giden yolda sana rehberlik edecek.`
+    ];
+
+    const randomIdx = (arr: any[]) => Math.floor(Math.random() * arr.length);
+
+    return (
+      <div className="space-y-6">
+        <p>{intros[randomIdx(intros)]}</p>
+        <p>{connections[randomIdx(connections)]}</p>
+        <p>{futureInsights[randomIdx(futureInsights)]}</p>
+        <p className="pt-4 border-t border-white/5 text-[#d4af37] font-bold italic">
+          Günün Tavsiyesi: {zodiac.element === 'Ateş' ? 'Cesaretini topla ve harekete geç.' : 
+                           zodiac.element === 'Su' ? 'Duygularının sesini dinle ve akışta kal.' : 
+                           zodiac.element === 'Toprak' ? 'Sabırlı ol ve temellerini sağlamlaştır.' : 
+                           'Zihnini özgür bırak ve yeni fikirlere açık ol.'}
+        </p>
+      </div>
+    );
+  }, [selectedCards, zodiac, userData.name]);
 
   return (
     <div className="min-h-screen bg-[#050208] text-[#f3e8ff] font-serif selection:bg-[#d4af37]/30 overflow-x-hidden">
@@ -304,18 +345,9 @@ export default function App() {
                   <Sparkles className="w-10 h-10 text-[#d4af37]/40 mx-auto mb-6" />
                   <h3 className="text-3xl font-light mb-8 italic text-[#d4af37]">Kozmik Yorum</h3>
                   <div className="space-y-6 text-[#f3e8ff]/80 text-lg leading-relaxed font-light">
-                    <p>
-                      Sevgili {userData.name}, bugün {zodiac?.name} burcunun o derin {zodiac?.element} enerjisiyle sarmalanmış durumdasın. 
-                      Ruhun, evrenin bu eşsiz anında tam bir denge arayışı içinde.
-                    </p>
-                    <p>
-                      {selectedCards[0].name} kartı, geçmişte bıraktığın ama hala ruhunda iz taşıyan tecrübelerin bir yansıması. 
-                      Şu anki {selectedCards[1].name} enerjin, bu tecrübeleri bilgeliğe dönüştürmen için sana güç veriyor. 
-                    </p>
-                    <p>
-                      Gelecekte beliren {selectedCards[2].name}, {zodiac?.name} burcunun o kendine has ışığıyla birleştiğinde hayatında yepyeni ve mucizevi kapılar açacak. 
-                      Unutma, yıldızlar sadece yol gösterir; asıl güç senin kalbinde saklı.
-                    </p>
+                    <div className="whitespace-pre-wrap text-left">
+                      {localReading}
+                    </div>
                   </div>
                   
                   <div className="mt-12 pt-8 border-t border-white/5">
