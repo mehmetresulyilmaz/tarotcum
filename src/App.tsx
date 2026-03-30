@@ -6,7 +6,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { tarotCards, TarotCard } from './tarotData';
-import { Sparkles, History, BookOpen, X, Trash2, Share2, Check, ChevronRight, RotateCcw, Home, Menu, Moon, Sun, Star } from 'lucide-react';
+import { Sparkles, History, BookOpen, X, Trash2, Share2, Check, ChevronRight, RotateCcw, Home, Menu, Moon, Sun, Star, MessageCircle } from 'lucide-react';
 
 type Screen = 'landing' | 'shuffling' | 'selection' | 'reading' | 'history' | 'library';
 type ReadingType = 'general' | 'love' | 'career';
@@ -50,6 +50,10 @@ export default function App() {
       ))}
     </div>
   );
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [screen]);
 
   useEffect(() => {
     const saved = localStorage.getItem('tarot_history');
@@ -135,14 +139,20 @@ export default function App() {
   };
 
   const handleShare = async () => {
-    const text = `Mistik Kehanet'te fal baktırdım! 🌟\n\nKartlarım: ${selectedCards.map(c => c.name).join(', ')}\n\nSen de kaderini öğrenmek ister misin?`;
+    const text = `Mistik Kehanet'te fal baktırdım! 🌟\n\nKartlarım: ${selectedCards.map(c => c.name).join(', ')}\n\n${readingText}\n\nSen de kaderini öğrenmek ister misin?`;
     if (navigator.share) {
       try { await navigator.share({ title: 'Mistik Kehanet Tarot Falı', text: text, url: window.location.href }); } catch (err) { console.log('Sharing failed', err); }
     } else {
-      navigator.clipboard.writeText(text);
+      navigator.clipboard.writeText(text + "\n\n" + window.location.href);
       setIsCopying(true);
       setTimeout(() => setIsCopying(false), 2000);
     }
+  };
+
+  const handleWhatsAppShare = () => {
+    const text = `Mistik Kehanet'te fal baktırdım! 🌟\n\nKartlarım: ${selectedCards.map(c => c.name).join(', ')}\n\n${readingText}\n\nSen de kaderini öğrenmek ister misin?\n\n${window.location.href}`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   const handleCardSelect = (card: TarotCard) => {
@@ -166,6 +176,12 @@ export default function App() {
     setShuffledCards([]);
     setReadingType('general');
   };
+
+  const readingText = useMemo(() => {
+    if (selectedCards.length < 3 || !zodiac) return "";
+    const [c1, c2, c3] = selectedCards;
+    return `Sevgili ${userData.name},\n\nGök kubbenin altında, ${zodiac.name} burcunun ${zodiac.element} elementinden gelen kadim bir enerjiyle sarmalanmış durumdasın. Geçmişin derinliklerinde yankılanan ${c1.name}, bugünkü ${c2.name} durumunun tohumlarını ekmiş.\n\nŞu anki kozmik frekansın, ${c2.meaning} temasını hayatının merkezine alıyor. ${zodiac.element} elementinin dengeleyici gücüyle, içsel pusulanı yeniden ayarlama vaktin geldi.\n\nGeleceğin ufkunda parlayan ${c3.name}, sana yepyeni bir kader yolu çiziyor. Hayat Yolu sayın olan ${lifePathNumber} ile uyumlu bir şekilde, yıldızlar senin için büyük bir dönüşümü müjdeliyor.`;
+  }, [selectedCards, zodiac, userData.name, lifePathNumber]);
 
   const localReading = useMemo(() => {
     if (selectedCards.length < 3 || !zodiac) return null;
@@ -243,7 +259,7 @@ export default function App() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="flex-1 flex flex-col items-center justify-center text-center space-y-12"
+              className="flex-1 flex flex-col items-center justify-start md:justify-center text-center space-y-12 pt-8 md:pt-0"
             >
               <div className="space-y-4">
                 <motion.div
@@ -462,8 +478,11 @@ export default function App() {
                         <button onClick={reset} className="btn-secondary flex-1 flex items-center justify-center gap-2">
                           <RotateCcw className="w-4 h-4" /> Yeniden Başla
                         </button>
+                        <button onClick={handleWhatsAppShare} className="btn-primary flex-1 flex items-center justify-center gap-2 bg-[#25D366] border-[#25D366] hover:bg-[#128C7E] hover:border-[#128C7E] text-white">
+                          <MessageCircle className="w-4 h-4" /> WhatsApp'ta Paylaş
+                        </button>
                         <button onClick={handleShare} className="btn-secondary flex-1 flex items-center justify-center gap-2">
-                          {isCopying ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />} {isCopying ? 'Kopyalandı' : 'Paylaş'}
+                          {isCopying ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />} {isCopying ? 'Kopyalandı' : 'Bağlantıyı Kopyala'}
                         </button>
                       </div>
                     </motion.div>
