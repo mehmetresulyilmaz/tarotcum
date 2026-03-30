@@ -79,6 +79,13 @@ export default function App() {
     localStorage.setItem('tarot_history', JSON.stringify(updated));
   };
 
+  const clearHistory = () => {
+    if (window.confirm("Tüm geçmişi silmek istediğinize emin misiniz?")) {
+      setHistory([]);
+      localStorage.removeItem('tarot_history');
+    }
+  };
+
   const calculateLifePathNumber = (dateStr: string) => {
     const digits = dateStr.replace(/\D/g, '');
     let sum = digits.split('').reduce((acc, d) => acc + parseInt(d), 0);
@@ -479,9 +486,20 @@ export default function App() {
               exit={{ opacity: 0 }}
               className="space-y-12 py-12"
             >
-              <div className="text-center space-y-3">
-                <h2 className="text-4xl font-serif font-bold">Geçmiş <span className="italic text-accent">Kehanetler</span></h2>
-                <p className="text-text-dim text-sm italic font-light">"Kaderinin izlerini burada takip et."</p>
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+                <div className="text-center md:text-left space-y-3">
+                  <h2 className="text-4xl font-serif font-bold">Geçmiş <span className="italic text-accent">Kehanetler</span></h2>
+                  <p className="text-text-dim text-sm italic font-light">"Kaderinin izlerini burada takip et."</p>
+                </div>
+                {history.length > 0 && (
+                  <button 
+                    onClick={clearHistory}
+                    className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest font-bold text-red-500/60 hover:text-red-500 transition-colors py-2 px-4 border border-red-500/10 hover:border-red-500/30 rounded-lg"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Geçmişi Temizle
+                  </button>
+                )}
               </div>
 
               {history.length === 0 ? (
@@ -598,8 +616,19 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      <footer className="relative z-10 py-12 text-center text-text-dim/10 text-[10px] tracking-[0.5em] uppercase font-bold">
-        &copy; 2026 Mistik Kehanet &bull; Kozmik Rehberlik
+      <footer className="relative z-10 py-12 text-center text-text-dim/30 text-[10px] tracking-widest uppercase font-medium space-y-2">
+        <p>&copy; {new Date().getFullYear()} Mistik Kehanet &bull; Kozmik Rehberlik</p>
+        <p>
+          Created by{" "}
+          <a 
+            href="https://fuzulimedya.netlify.app" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-accent hover:text-accent/80 transition-colors"
+          >
+            FuzuliMedya
+          </a>
+        </p>
       </footer>
     </div>
   );
