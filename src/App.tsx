@@ -12,7 +12,7 @@ import { Sparkles, History, BookOpen, X, Trash2, Share2, Check, ChevronRight, Ro
 type Screen = 'landing' | 'shuffling' | 'selection' | 'reading' | 'history' | 'library';
 type ReadingType = 'general' | 'love' | 'career' | 'daily' | 'weekly' | 'monthly';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+// AI initialization will happen inside the function to ensure up-to-date key
 
 interface SavedReading {
   id: string;
@@ -136,9 +136,11 @@ export default function App() {
   }, [userData.birthDate]);
 
   const getZodiacSign = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return { name: "Bilinmiyor", element: "Bilinmiyor" };
+    const month = parseInt(parts[1]);
+    const day = parseInt(parts[2]);
+    
     if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return { name: "Koç", element: "Ateş" };
     if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return { name: "Boğa", element: "Toprak" };
     if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return { name: "İkizler", element: "Hava" };
@@ -191,11 +193,11 @@ export default function App() {
       const newSelection = [...selectedCards, card];
       setSelectedCards(newSelection);
       if (newSelection.length === 3) {
-        setTimeout(() => {
-          setScreen('reading');
-          generateAiInterpretation(newSelection);
-          setTimeout(() => setRevealed(true), 500);
-        }, 600);
+        // Transition to reading screen immediately for better responsiveness
+        setScreen('reading');
+        generateAiInterpretation(newSelection);
+        // Reveal cards after a short delay to allow for screen transition animation
+        setTimeout(() => setRevealed(true), 800);
       }
     }
   };
@@ -205,10 +207,18 @@ export default function App() {
     setAiInterpretation("");
     
     try {
+      const apiKey = process.env.GEMINI_API_KEY || "";
+      if (!apiKey) {
+        console.warn("Gemini API key not found. Falling back to local interpretation.");
+        setIsAiLoading(false);
+        return;
+      }
+      
+      const ai = new GoogleGenAI({ apiKey });
       const timeframe = readingType === 'daily' ? 'günlük' : readingType === 'weekly' ? 'haftalık' : readingType === 'monthly' ? 'aylık' : '';
       const typeLabel = readingType === 'love' ? 'aşk' : readingType === 'career' ? 'kariyer' : 'genel';
       
-      const prompt = `Sen mistik bir tarot yorumcususun. İsim: ${userData.name}, Burç: ${zodiac?.name}, Element: ${zodiac?.element}, Hayat Yolu Sayısı: ${lifePathNumber}. 
+      const prompt = `Sen mistik bir tarot yorumcususun. İsim: ${userData.name}, Burç: ${zodiac?.name || 'Bilinmiyor'}, Element: ${zodiac?.element || 'Bilinmiyor'}, Hayat Yolu Sayısı: ${lifePathNumber || 'Bilinmiyor'}. 
       Seçilen Kartlar: ${cards.map(c => c.name).join(', ')}. 
       Okuma Türü: ${typeLabel} ${timeframe}. 
       Lütfen bu kartları bir bütün olarak, mistik, bilgece ve umut verici bir dille yorumla. 
@@ -230,6 +240,12 @@ export default function App() {
       // Fallback will be handled by useMemo in readingText
     } finally {
       setIsAiLoading(false);
+    }
+  };
+
+  const getAiReading = () => {
+    if (selectedCards.length === 3) {
+      generateAiInterpretation(selectedCards);
     }
   };
 
@@ -364,7 +380,7 @@ export default function App() {
       </nav>
 
       <main className="relative z-10 pt-16 md:pt-32 px-6 md:px-12 max-w-6xl mx-auto min-h-screen flex flex-col">
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {screen === 'landing' && (
             <motion.div
               key="landing"
@@ -529,8 +545,16 @@ export default function App() {
                       <motion.div
                         key={card.id}
                         initial={{ opacity: 0, y: 20, rotateY: 180 }}
-                        animate={revealed ? { opacity: 1, y: 0, rotateY: 0 } : {}}
-                        transition={{ duration: 1, delay: idx * 0.3 }}
+                        animate={{ 
+                          opacity: 1, 
+                          y: 0, 
+                          rotateY: revealed ? 0 : 180 
+                        }}
+                        transition={{ 
+                          opacity: { duration: 0.5, delay: idx * 0.2 },
+                          y: { duration: 0.5, delay: idx * 0.2 },
+                          rotateY: { duration: 0.8 }
+                        }}
                         className="space-y-3"
                       >
                         <div className="aspect-[2/3] rounded-xl overflow-hidden border border-border shadow-lg relative group">
