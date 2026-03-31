@@ -36,6 +36,7 @@ export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [aiInterpretation, setAiInterpretation] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // Theme detection and handling
   useEffect(() => {
@@ -205,13 +206,16 @@ export default function App() {
   const generateAiInterpretation = async (cards: TarotCard[]) => {
     setIsAiLoading(true);
     setAiInterpretation("");
+    setAiError(null);
     
     try {
+      // AI Studio environment provides the key automatically via process.env
       const apiKey = process.env.GEMINI_API_KEY || "";
-      if (!apiKey) {
-        console.warn("Gemini API key not found. Falling back to local interpretation.");
-        setIsAiLoading(false);
-        return;
+      
+      if (!apiKey || apiKey === "undefined" || apiKey === "TODO_KEYHERE") {
+        // If key is missing in this specific build, we silently fail to local reading
+        // without bothering the user with technical errors.
+        throw new Error("Sistem bağlantısı bekleniyor...");
       }
       
       const ai = new GoogleGenAI({ apiKey });
@@ -233,11 +237,12 @@ export default function App() {
       if (response.text) {
         setAiInterpretation(response.text);
       } else {
-        throw new Error("No text generated");
+        throw new Error("Yapay zeka şu an meşgul.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Interpretation error:", error);
-      // Fallback will be handled by useMemo in readingText
+      // We don't set a hard error anymore to allow local reading to show up naturally
+      // but we can log it for debugging
     } finally {
       setIsAiLoading(false);
     }
@@ -611,17 +616,32 @@ export default function App() {
                       </div>
 
                       <div className="prose prose-invert max-w-none">
-                        {aiInterpretation ? (
-                          <div className="space-y-4 text-text-bright/80 text-sm leading-relaxed font-light whitespace-pre-wrap">
-                            {aiInterpretation}
-                          </div>
-                        ) : isAiLoading ? (
+                        {isAiLoading ? (
                           <div className="py-12 flex flex-col items-center justify-center space-y-4">
-                            <Sparkles className="w-8 h-8 text-accent animate-pulse" />
+                            <Loader2 className="w-8 h-8 text-accent animate-spin" />
                             <p className="text-accent font-serif italic animate-pulse">Kozmik Bilgelik Aktarılıyor...</p>
                           </div>
+                        ) : aiInterpretation ? (
+                          <div className="space-y-4 text-text-bright/80 text-sm leading-relaxed font-light whitespace-pre-wrap">
+                            {aiInterpretation}
+                            <div className="pt-6 border-t border-border/20 italic text-[10px] text-text-dim">
+                              "Yıldızların fısıltısı yapay zeka aracılığıyla tercüme edilmiştir."
+                            </div>
+                          </div>
                         ) : (
-                          localReading
+                          <div className="space-y-4">
+                            {localReading}
+                            {!isAiLoading && !aiInterpretation && (
+                              <div className="pt-4 flex justify-center">
+                                <button 
+                                  onClick={getAiReading}
+                                  className="text-[10px] uppercase tracking-widest font-bold text-accent hover:text-accent/80 transition-colors flex items-center gap-2"
+                                >
+                                  <Sparkles className="w-3 h-3" /> AI Yorumunu Tekrar Dene
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
 
