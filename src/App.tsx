@@ -9,7 +9,7 @@ import { tarotCards, TarotCard } from './tarotData';
 import { Sparkles, History, BookOpen, X, Trash2, Share2, Check, ChevronRight, RotateCcw, Home, Menu, Moon, Sun, Star, MessageCircle } from 'lucide-react';
 
 type Screen = 'landing' | 'shuffling' | 'selection' | 'reading' | 'history' | 'library';
-type ReadingType = 'general' | 'love' | 'career';
+type ReadingType = 'general' | 'love' | 'career' | 'daily' | 'weekly' | 'monthly';
 
 interface SavedReading {
   id: string;
@@ -206,18 +206,33 @@ export default function App() {
   const readingText = useMemo(() => {
     if (selectedCards.length < 3 || !zodiac) return "";
     const [c1, c2, c3] = selectedCards;
-    return `Sevgili ${userData.name},\n\nGök kubbenin altında, ${zodiac.name} burcunun ${zodiac.element} elementinden gelen kadim bir enerjiyle sarmalanmış durumdasın. Geçmişin derinliklerinde yankılanan ${c1.name}, bugünkü ${c2.name} durumunun tohumlarını ekmiş.\n\nŞu anki kozmik frekansın, ${c2.meaning} temasını hayatının merkezine alıyor. ${zodiac.element} elementinin dengeleyici gücüyle, içsel pusulanı yeniden ayarlama vaktin geldi.\n\nGeleceğin ufkunda parlayan ${c3.name}, sana yepyeni bir kader yolu çiziyor. Hayat Yolu sayın olan ${lifePathNumber} ile uyumlu bir şekilde, yıldızlar senin için büyük bir dönüşümü müjdeliyor.`;
-  }, [selectedCards, zodiac, userData.name, lifePathNumber]);
+    const timeframe = readingType === 'daily' ? 'bugünkü' : readingType === 'weekly' ? 'bu haftaki' : readingType === 'monthly' ? 'bu ayki' : '';
+    const typeLabel = readingType === 'love' ? 'aşk' : readingType === 'career' ? 'kariyer' : 'genel';
+    
+    let intro = `Sevgili ${userData.name},\n\nGök kubbenin altında, ${zodiac.name} burcunun ${zodiac.element} elementinden gelen kadim bir enerjiyle sarmalanmış durumdasın.`;
+    
+    if (readingType === 'daily' || readingType === 'weekly' || readingType === 'monthly') {
+      intro = `Sevgili ${userData.name},\n\n${timeframe} kozmik yolculuğunda, ${zodiac.name} burcunun ${zodiac.element} enerjisi sana rehberlik ediyor.`;
+    }
+
+    return `${intro} Geçmişin derinliklerinde yankılanan ${c1.name}, bugünkü ${c2.name} durumunun tohumlarını ekmiş.\n\nŞu anki kozmik frekansın, ${c2.meaning} temasını hayatının merkezine alıyor. ${zodiac.element} elementinin dengeleyici gücüyle, içsel pusulanı yeniden ayarlama vaktin geldi.\n\nGeleceğin ufkunda parlayan ${c3.name}, sana yepyeni bir kader yolu çiziyor. Hayat Yolu sayın olan ${lifePathNumber} ile uyumlu bir şekilde, yıldızlar senin için büyük bir dönüşümü müjdeliyor.`;
+  }, [selectedCards, zodiac, userData.name, lifePathNumber, readingType]);
 
   const localReading = useMemo(() => {
     if (selectedCards.length < 3 || !zodiac) return null;
     const [c1, c2, c3] = selectedCards;
+    const timeframe = readingType === 'daily' ? 'bugünkü' : readingType === 'weekly' ? 'bu haftaki' : readingType === 'monthly' ? 'bu ayki' : '';
+    
     return (
       <div className="space-y-6 text-text-bright/80 text-sm leading-relaxed font-light">
         <p className="text-lg font-serif text-accent italic">Sevgili {userData.name},</p>
         <p>
-          Gök kubbenin altında, {zodiac.name} burcunun {zodiac.element} elementinden gelen kadim bir enerjiyle sarmalanmış durumdasın. 
-          Geçmişin derinliklerinde yankılanan <span className="text-accent font-medium">{c1.name}</span>, bugünkü <span className="text-accent font-medium">{c2.name}</span> durumunun tohumlarını ekmiş.
+          {readingType === 'daily' || readingType === 'weekly' || readingType === 'monthly' ? (
+            <>{timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} kozmik yolculuğunda, {zodiac.name} burcunun {zodiac.element} enerjisi sana rehberlik ediyor.</>
+          ) : (
+            <>Gök kubbenin altında, {zodiac.name} burcunun {zodiac.element} elementinden gelen kadim bir enerjiyle sarmalanmış durumdasın.</>
+          )}
+          {" "}Geçmişin derinliklerinde yankılanan <span className="text-accent font-medium">{c1.name}</span>, bugünkü <span className="text-accent font-medium">{c2.name}</span> durumunun tohumlarını ekmiş.
         </p>
         <p>
           Şu anki kozmik frekansın, {c2.meaning} temasını hayatının merkezine alıyor. {zodiac.element} elementinin dengeleyici gücüyle, 
@@ -339,7 +354,7 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
-                    {['general', 'love', 'career'].map((type) => (
+                    {['general', 'love', 'career', 'daily', 'weekly', 'monthly'].map((type) => (
                       <button
                         key={type}
                         type="button"
@@ -350,7 +365,11 @@ export default function App() {
                             : 'bg-transparent border-border text-text-dim hover:border-accent/30'
                         }`}
                       >
-                        {type === 'general' ? 'Genel' : type === 'love' ? 'Aşk' : 'İş'}
+                        {type === 'general' ? 'Genel' : 
+                         type === 'love' ? 'Aşk' : 
+                         type === 'career' ? 'İş' : 
+                         type === 'daily' ? 'Günlük' : 
+                         type === 'weekly' ? 'Haftalık' : 'Aylık'}
                       </button>
                     ))}
                   </div>
@@ -580,7 +599,11 @@ export default function App() {
                       <div className="flex justify-between items-start mb-4">
                         <div className="space-y-1">
                           <p className="text-[9px] uppercase tracking-widest text-accent font-bold">
-                            {item.readingType === 'love' ? 'Aşk' : item.readingType === 'career' ? 'İş' : 'Genel'}
+                            {item.readingType === 'love' ? 'Aşk' : 
+                             item.readingType === 'career' ? 'İş' : 
+                             item.readingType === 'daily' ? 'Günlük' : 
+                             item.readingType === 'weekly' ? 'Haftalık' : 
+                             item.readingType === 'monthly' ? 'Aylık' : 'Genel'}
                           </p>
                           <p className="text-[9px] text-text-dim font-mono">{item.date}</p>
                         </div>
