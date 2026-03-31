@@ -474,14 +474,14 @@ export default function App() {
                         {localReading}
                       </div>
 
-                      <div className="pt-8 flex flex-col sm:flex-row gap-4">
-                        <button onClick={reset} className="btn-secondary flex-1 flex items-center justify-center gap-2">
+                      <div className="pt-8 flex flex-wrap gap-3">
+                        <button onClick={reset} className="btn-secondary flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4">
                           <RotateCcw className="w-4 h-4" /> Yeniden Başla
                         </button>
-                        <button onClick={handleWhatsAppShare} className="btn-primary flex-1 flex items-center justify-center gap-2 bg-[#25D366] border-[#25D366] hover:bg-[#128C7E] hover:border-[#128C7E] text-white">
+                        <button onClick={handleWhatsAppShare} className="btn-primary flex-1 min-w-[180px] flex items-center justify-center gap-2 bg-[#25D366] border-[#25D366] hover:bg-[#128C7E] hover:border-[#128C7E] text-white px-4">
                           <MessageCircle className="w-4 h-4" /> WhatsApp'ta Paylaş
                         </button>
-                        <button onClick={handleShare} className="btn-secondary flex-1 flex items-center justify-center gap-2">
+                        <button onClick={handleShare} className="btn-secondary flex-1 min-w-[180px] flex items-center justify-center gap-2 px-4">
                           {isCopying ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />} {isCopying ? 'Kopyalandı' : 'Bağlantıyı Kopyala'}
                         </button>
                       </div>
