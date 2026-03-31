@@ -5,11 +5,14 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { GoogleGenAI } from "@google/genai";
 import { tarotCards, TarotCard } from './tarotData';
-import { Sparkles, History, BookOpen, X, Trash2, Share2, Check, ChevronRight, RotateCcw, Home, Menu, Moon, Sun, Star, MessageCircle } from 'lucide-react';
+import { Sparkles, History, BookOpen, X, Trash2, Share2, Check, ChevronRight, RotateCcw, Home, Menu, Moon, Sun, Star, MessageCircle, Loader2 } from 'lucide-react';
 
 type Screen = 'landing' | 'shuffling' | 'selection' | 'reading' | 'history' | 'library';
 type ReadingType = 'general' | 'love' | 'career' | 'daily' | 'weekly' | 'monthly';
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 interface SavedReading {
   id: string;
@@ -31,6 +34,8 @@ export default function App() {
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<SavedReading | null>(null);
   const [isCopying, setIsCopying] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [aiInterpretation, setAiInterpretation] = useState<string>('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
   // Theme detection and handling
   useEffect(() => {
@@ -188,9 +193,43 @@ export default function App() {
       if (newSelection.length === 3) {
         setTimeout(() => {
           setScreen('reading');
+          generateAiInterpretation(newSelection);
           setTimeout(() => setRevealed(true), 500);
         }, 600);
       }
+    }
+  };
+
+  const generateAiInterpretation = async (cards: TarotCard[]) => {
+    setIsAiLoading(true);
+    setAiInterpretation("");
+    
+    try {
+      const timeframe = readingType === 'daily' ? 'günlük' : readingType === 'weekly' ? 'haftalık' : readingType === 'monthly' ? 'aylık' : '';
+      const typeLabel = readingType === 'love' ? 'aşk' : readingType === 'career' ? 'kariyer' : 'genel';
+      
+      const prompt = `Sen mistik bir tarot yorumcususun. İsim: ${userData.name}, Burç: ${zodiac?.name}, Element: ${zodiac?.element}, Hayat Yolu Sayısı: ${lifePathNumber}. 
+      Seçilen Kartlar: ${cards.map(c => c.name).join(', ')}. 
+      Okuma Türü: ${typeLabel} ${timeframe}. 
+      Lütfen bu kartları bir bütün olarak, mistik, bilgece ve umut verici bir dille yorumla. 
+      Yorumun 3-4 paragraf olsun ve her kartın anlamına değinerek genel bir sentez yap. 
+      Yanıtı sadece yorum metni olarak ver, giriş veya çıkış cümleleri ekleme.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+      });
+
+      if (response.text) {
+        setAiInterpretation(response.text);
+      } else {
+        throw new Error("No text generated");
+      }
+    } catch (error) {
+      console.error("AI Interpretation error:", error);
+      // Fallback will be handled by useMemo in readingText
+    } finally {
+      setIsAiLoading(false);
     }
   };
 
@@ -201,13 +240,15 @@ export default function App() {
     setUserData({ name: '', birthDate: '' });
     setShuffledCards([]);
     setReadingType('general');
+    setAiInterpretation("");
+    setIsAiLoading(false);
   };
 
   const readingText = useMemo(() => {
+    if (aiInterpretation) return aiInterpretation;
     if (selectedCards.length < 3 || !zodiac) return "";
     const [c1, c2, c3] = selectedCards;
     const timeframe = readingType === 'daily' ? 'bugünkü' : readingType === 'weekly' ? 'bu haftaki' : readingType === 'monthly' ? 'bu ayki' : '';
-    const typeLabel = readingType === 'love' ? 'aşk' : readingType === 'career' ? 'kariyer' : 'genel';
     
     let intro = `Sevgili ${userData.name},\n\nGök kubbenin altında, ${zodiac.name} burcunun ${zodiac.element} elementinden gelen kadim bir enerjiyle sarmalanmış durumdasın.`;
     
@@ -216,9 +257,29 @@ export default function App() {
     }
 
     return `${intro} Geçmişin derinliklerinde yankılanan ${c1.name}, bugünkü ${c2.name} durumunun tohumlarını ekmiş.\n\nŞu anki kozmik frekansın, ${c2.meaning} temasını hayatının merkezine alıyor. ${zodiac.element} elementinin dengeleyici gücüyle, içsel pusulanı yeniden ayarlama vaktin geldi.\n\nGeleceğin ufkunda parlayan ${c3.name}, sana yepyeni bir kader yolu çiziyor. Hayat Yolu sayın olan ${lifePathNumber} ile uyumlu bir şekilde, yıldızlar senin için büyük bir dönüşümü müjdeliyor.`;
-  }, [selectedCards, zodiac, userData.name, lifePathNumber, readingType]);
+  }, [selectedCards, zodiac, userData.name, lifePathNumber, readingType, aiInterpretation]);
 
   const localReading = useMemo(() => {
+    if (isAiLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 space-y-4 text-accent">
+          <Loader2 className="w-8 h-8 animate-spin" />
+          <p className="text-sm font-serif italic animate-pulse">Yıldızlar fısıldıyor, kaderin okunuyor...</p>
+        </div>
+      );
+    }
+
+    if (aiInterpretation) {
+      return (
+        <div className="space-y-6 text-text-bright/80 text-sm leading-relaxed font-light whitespace-pre-wrap">
+          {aiInterpretation}
+          <div className="pt-6 border-t border-border italic text-xs text-text-dim">
+            "Kader, yıldızların arasında yazılıdır; ancak onu okumak senin ruhunun bilgeliğidir."
+          </div>
+        </div>
+      );
+    }
+
     if (selectedCards.length < 3 || !zodiac) return null;
     const [c1, c2, c3] = selectedCards;
     const timeframe = readingType === 'daily' ? 'bugünkü' : readingType === 'weekly' ? 'bu haftaki' : readingType === 'monthly' ? 'bu ayki' : '';
@@ -248,13 +309,13 @@ export default function App() {
         </div>
       </div>
     );
-  }, [selectedCards, zodiac, userData.name, readingType, lifePathNumber]);
+  }, [selectedCards, zodiac, userData.name, readingType, lifePathNumber, aiInterpretation, isAiLoading]);
 
   useEffect(() => {
-    if (revealed && screen === 'reading' && selectedCards.length === 3 && localReading) {
-      saveReading(selectedCards, `Sevgili ${userData.name}, bu fal senin için özel olarak yorumlandı.`);
+    if (revealed && screen === 'reading' && selectedCards.length === 3 && (aiInterpretation || !isAiLoading)) {
+      saveReading(selectedCards, readingText);
     }
-  }, [revealed]);
+  }, [revealed, aiInterpretation, isAiLoading]);
 
   const NavItem = ({ id, icon: Icon, label }: { id: Screen, icon: any, label: string }) => (
     <button
@@ -526,18 +587,31 @@ export default function App() {
                       </div>
 
                       <div className="prose prose-invert max-w-none">
-                        {localReading}
+                        {aiInterpretation ? (
+                          <div className="space-y-4 text-text-bright/80 text-sm leading-relaxed font-light whitespace-pre-wrap">
+                            {aiInterpretation}
+                          </div>
+                        ) : isAiLoading ? (
+                          <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                            <Sparkles className="w-8 h-8 text-accent animate-pulse" />
+                            <p className="text-accent font-serif italic animate-pulse">Kozmik Bilgelik Aktarılıyor...</p>
+                          </div>
+                        ) : (
+                          localReading
+                        )}
                       </div>
 
                       <div className="pt-8 flex flex-wrap gap-3">
                         <button onClick={reset} className="btn-secondary flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4">
                           <RotateCcw className="w-4 h-4" /> Yeniden Başla
                         </button>
+                        {!aiInterpretation && !isAiLoading && (
+                          <button onClick={getAiReading} className="btn-primary flex-1 min-w-[180px] flex items-center justify-center gap-2 bg-gradient-to-r from-accent to-accent/60 text-bg px-4">
+                            <Sparkles className="w-4 h-4" /> AI Bilge Yorumu Al
+                          </button>
+                        )}
                         <button onClick={handleWhatsAppShare} className="btn-primary flex-1 min-w-[180px] flex items-center justify-center gap-2 bg-[#25D366] border-[#25D366] hover:bg-[#128C7E] hover:border-[#128C7E] text-white px-4">
                           <MessageCircle className="w-4 h-4" /> WhatsApp'ta Paylaş
-                        </button>
-                        <button onClick={handleShare} className="btn-secondary flex-1 min-w-[180px] flex items-center justify-center gap-2 px-4">
-                          {isCopying ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />} {isCopying ? 'Kopyalandı' : 'Bağlantıyı Kopyala'}
                         </button>
                       </div>
                     </motion.div>
