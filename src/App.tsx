@@ -209,13 +209,26 @@ export default function App() {
     setAiError(null);
     
     try {
+      // Check if we need to prompt for a key (some environments require this in standalone mode)
+      if (typeof window !== 'undefined' && (window as any).aistudio?.hasSelectedApiKey) {
+        const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+        if (!hasKey && (window as any).aistudio.openSelectKey) {
+          await (window as any).aistudio.openSelectKey();
+        }
+      }
+
       // AI Studio environment provides the key automatically via process.env
-      const apiKey = process.env.GEMINI_API_KEY || "";
+      // We check both GEMINI_API_KEY and API_KEY as different environments might use different names
+      // We also check for "undefined" string which can happen during build-time definition
+      const apiKey = (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "undefined") 
+        ? process.env.GEMINI_API_KEY 
+        : (process.env.API_KEY && process.env.API_KEY !== "undefined") 
+          ? process.env.API_KEY 
+          : "";
       
-      if (!apiKey || apiKey === "undefined" || apiKey === "TODO_KEYHERE") {
-        // If key is missing in this specific build, we silently fail to local reading
-        // without bothering the user with technical errors.
-        throw new Error("Sistem bağlantısı bekleniyor...");
+      if (!apiKey || apiKey === "TODO_KEYHERE") {
+        // If key is missing, we silently fail to local reading
+        throw new Error("Kozmik bağlantı anahtarı bulunamadı.");
       }
       
       const ai = new GoogleGenAI({ apiKey });
@@ -240,9 +253,12 @@ export default function App() {
         throw new Error("Yapay zeka şu an meşgul.");
       }
     } catch (error: any) {
-      console.error("AI Interpretation error:", error);
+      console.error("AI Interpretation error details:", {
+        message: error.message,
+        stack: error.stack,
+        apiKeyPresent: !!process.env.GEMINI_API_KEY || !!process.env.API_KEY
+      });
       // We don't set a hard error anymore to allow local reading to show up naturally
-      // but we can log it for debugging
     } finally {
       setIsAiLoading(false);
     }
