@@ -30,6 +30,25 @@
   --text-bright: #e1e1e3;
 }
 
+.card-back-pattern {
+  background-color: var(--surface);
+  background-image: 
+    radial-gradient(circle at 50% 50%, var(--color-accent) 1px, transparent 1px),
+    linear-gradient(45deg, transparent 48%, var(--color-accent) 48%, var(--color-accent) 52%, transparent 52%),
+    linear-gradient(-45deg, transparent 48%, var(--color-accent) 48%, var(--color-accent) 52%, transparent 52%);
+  background-size: 20px 20px, 40px 40px, 40px 40px;
+  background-position: 0 0, 0 0, 0 0;
+  opacity: 0.15;
+}
+
+.dark .card-back-pattern {
+  opacity: 0.1;
+}
+
+.card-back-frame {
+  @apply absolute inset-1 border border-accent/20 rounded-lg;
+}
+
 @layer base {
   body {
     @apply bg-bg text-text-bright font-sans antialiased selection:bg-accent/20 transition-colors duration-500;

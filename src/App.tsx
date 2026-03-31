@@ -479,9 +479,13 @@ export default function App() {
                     key={i}
                     animate={{ rotate: [i * 10, i * 10 + 360], scale: [1, 1.05, 1] }}
                     transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: i * 0.2 }}
-                    className="absolute inset-0 bg-surface border border-border rounded-xl flex items-center justify-center"
+                    className="absolute inset-0 bg-surface border border-border rounded-xl overflow-hidden"
                   >
-                    <Star className="w-6 h-6 text-accent/10" />
+                    <div className="absolute inset-0 card-back-pattern" />
+                    <div className="card-back-frame" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Star className="w-6 h-6 text-accent/20" />
+                    </div>
                   </motion.div>
                 ))}
               </div>
@@ -519,14 +523,16 @@ export default function App() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.02 }}
-                      whileHover={!isSelected && selectedCards.length < 3 ? { y: -5 } : {}}
+                      whileHover={!isSelected && selectedCards.length < 3 ? { y: -5, scale: 1.02 } : {}}
                       onClick={() => handleCardSelect(card)}
                       className={`aspect-[2/3] rounded-lg cursor-pointer relative overflow-hidden border transition-all duration-500 ${
-                        isSelected ? 'border-accent opacity-30 scale-95' : 'border-border hover:border-accent/40 bg-surface/50'
+                        isSelected ? 'border-accent opacity-30 scale-95' : 'border-border hover:border-accent/40 bg-surface'
                       }`}
                     >
+                      <div className="absolute inset-0 card-back-pattern" />
+                      <div className="card-back-frame" />
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <Moon className="w-4 h-4 text-accent/5" />
+                        <Moon className="w-4 h-4 text-accent/20" />
                       </div>
                     </motion.div>
                   );
@@ -562,9 +568,20 @@ export default function App() {
                         }}
                         className="space-y-3"
                       >
-                        <div className="aspect-[2/3] rounded-xl overflow-hidden border border-border shadow-lg relative group">
-                          <img src={card.image} alt={card.name} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-transparent opacity-40" />
+                        <div className="aspect-[2/3] rounded-xl overflow-hidden border border-border shadow-lg relative group [transform-style:preserve-3d]">
+                          {/* Front Face */}
+                          <div className={`absolute inset-0 [backface-visibility:hidden] ${revealed ? 'z-10' : 'z-0'}`}>
+                            <img src={card.image} alt={card.name} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" referrerPolicy="no-referrer" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-transparent opacity-40" />
+                          </div>
+                          {/* Back Face */}
+                          <div className={`absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] bg-surface ${!revealed ? 'z-10' : 'z-0'}`}>
+                            <div className="absolute inset-0 card-back-pattern" />
+                            <div className="card-back-frame" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <Moon className="w-6 h-6 text-accent/20" />
+                            </div>
+                          </div>
                         </div>
                         <div className="text-center">
                           <p className="text-[9px] uppercase tracking-wider text-accent font-bold mb-1">
