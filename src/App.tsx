@@ -30,10 +30,36 @@ export default function App() {
   const [history, setHistory] = useState<SavedReading[]>([]);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<SavedReading | null>(null);
   const [isCopying, setIsCopying] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+
+  // Theme detection and handling
+  useEffect(() => {
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const savedTheme = localStorage.getItem('tarot_theme') as 'light' | 'dark' | null;
+    const initialTheme = savedTheme || systemTheme;
+    
+    setTheme(initialTheme);
+    if (initialTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('tarot_theme', newTheme);
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
 
   // Subtle Star Background
   const StarField = () => (
-    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-40 dark:opacity-100">
       {[...Array(60)].map((_, i) => (
         <motion.div
           key={i}
@@ -241,6 +267,9 @@ export default function App() {
           <button onClick={() => setScreen('landing')} className={`text-[10px] uppercase tracking-[0.2em] font-bold transition-all ${screen === 'landing' ? 'text-accent' : 'text-text-dim hover:text-accent'}`}>Kehanet</button>
           <button onClick={() => setScreen('history')} className={`text-[10px] uppercase tracking-[0.2em] font-bold transition-all ${screen === 'history' ? 'text-accent' : 'text-text-dim hover:text-accent'}`}>Geçmiş</button>
           <button onClick={() => setScreen('library')} className={`text-[10px] uppercase tracking-[0.2em] font-bold transition-all ${screen === 'library' ? 'text-accent' : 'text-text-dim hover:text-accent'}`}>Kütüphane</button>
+          <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-surface transition-colors text-text-dim hover:text-accent">
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
         </nav>
       </header>
 
@@ -249,6 +278,13 @@ export default function App() {
         <NavItem id="landing" icon={Sparkles} label="Kehanet" />
         <NavItem id="history" icon={History} label="Geçmiş" />
         <NavItem id="library" icon={BookOpen} label="Bilgi" />
+        <button
+          onClick={toggleTheme}
+          className="flex flex-col items-center gap-1 text-text-dim hover:text-accent/60 transition-all"
+        >
+          {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          <span className="text-[9px] uppercase tracking-wider font-semibold">{theme === 'dark' ? 'Gündüz' : 'Gece'}</span>
+        </button>
       </nav>
 
       <main className="relative z-10 pt-16 md:pt-32 px-6 md:px-12 max-w-6xl mx-auto min-h-screen flex flex-col">
