@@ -7,7 +7,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
 import { tarotCards, TarotCard } from './tarotData';
-import { Sparkles, History, BookOpen, X, Trash2, Share2, Check, ChevronRight, RotateCcw, Home, Menu, Moon, Sun, Star, MessageCircle, Loader2 } from 'lucide-react';
+import { Sparkles, History, BookOpen, X, Trash2, Share2, Check, ChevronRight, RotateCcw, Home, Menu, Moon, Sun, Star, MessageCircle, Loader2, Settings } from 'lucide-react';
 
 type Screen = 'landing' | 'shuffling' | 'selection' | 'reading' | 'history' | 'library';
 type ReadingType = 'general' | 'love' | 'career' | 'daily' | 'weekly' | 'monthly';
@@ -203,6 +203,15 @@ export default function App() {
     }
   };
 
+  const [showSettings, setShowSettings] = useState(false);
+  const [customApiKey, setCustomApiKey] = useState(() => localStorage.getItem('custom_gemini_key') || "");
+
+  const saveApiKey = (key: string) => {
+    setCustomApiKey(key);
+    localStorage.setItem('custom_gemini_key', key);
+    setShowSettings(false);
+  };
+
   const generateAiInterpretation = async (cards: TarotCard[]) => {
     setIsAiLoading(true);
     setAiInterpretation("");
@@ -217,10 +226,8 @@ export default function App() {
         }
       }
 
-      // AI Studio environment provides the key automatically via process.env
-      // We check both GEMINI_API_KEY and API_KEY as different environments might use different names
-      // We also check for "undefined" string which can happen during build-time definition
-      const apiKey = (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "undefined") 
+      // Priority: 1. User-entered key, 2. Environment key
+      const apiKey = customApiKey || (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "undefined") 
         ? process.env.GEMINI_API_KEY 
         : (process.env.API_KEY && process.env.API_KEY !== "undefined") 
           ? process.env.API_KEY 
@@ -265,6 +272,17 @@ export default function App() {
   };
 
   const getAiReading = () => {
+    const apiKey = customApiKey || (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "undefined") 
+      ? process.env.GEMINI_API_KEY 
+      : (process.env.API_KEY && process.env.API_KEY !== "undefined") 
+        ? process.env.API_KEY 
+        : "";
+
+    if (!apiKey || apiKey === "TODO_KEYHERE") {
+      setShowSettings(true);
+      return;
+    }
+    
     if (selectedCards.length === 3) {
       generateAiInterpretation(selectedCards);
     }
@@ -286,6 +304,7 @@ export default function App() {
     if (selectedCards.length < 3 || !zodiac) return "";
     const [c1, c2, c3] = selectedCards;
     const timeframe = readingType === 'daily' ? 'bugünkü' : readingType === 'weekly' ? 'bu haftaki' : readingType === 'monthly' ? 'bu ayki' : '';
+    const typeLabel = readingType === 'love' ? 'aşk' : readingType === 'career' ? 'kariyer' : 'genel';
     
     let intro = `Sevgili ${userData.name},\n\nGök kubbenin altında, ${zodiac.name} burcunun ${zodiac.element} elementinden gelen kadim bir enerjiyle sarmalanmış durumdasın.`;
     
@@ -293,7 +312,15 @@ export default function App() {
       intro = `Sevgili ${userData.name},\n\n${timeframe} kozmik yolculuğunda, ${zodiac.name} burcunun ${zodiac.element} enerjisi sana rehberlik ediyor.`;
     }
 
-    return `${intro} Geçmişin derinliklerinde yankılanan ${c1.name}, bugünkü ${c2.name} durumunun tohumlarını ekmiş.\n\nŞu anki kozmik frekansın, ${c2.meaning} temasını hayatının merkezine alıyor. ${zodiac.element} elementinin dengeleyici gücüyle, içsel pusulanı yeniden ayarlama vaktin geldi.\n\nGeleceğin ufkunda parlayan ${c3.name}, sana yepyeni bir kader yolu çiziyor. Hayat Yolu sayın olan ${lifePathNumber} ile uyumlu bir şekilde, yıldızlar senin için büyük bir dönüşümü müjdeliyor.`;
+    const reading = `${intro} 
+    
+Geçmişin derinliklerinde yankılanan ${c1.name}, bugünkü ${c2.name} durumunun tohumlarını ekmiş. Bu kart, senin köklerindeki ${c1.meaning.toLowerCase()} enerjisinin hala ruhunda titreştiğini gösteriyor.
+
+Şu anki kozmik frekansın, ${c2.name} kartıyla ${c2.meaning} temasını hayatının merkezine alıyor. ${zodiac.element} elementinin dengeleyici gücüyle, ${typeLabel} hayatında içsel pusulanı yeniden ayarlama vaktin geldi.
+
+Geleceğin ufkunda parlayan ${c3.name}, sana yepyeni bir kader yolu çiziyor. Bu kartın müjdelediği ${c3.meaning.toLowerCase()} enerjisi, Hayat Yolu sayın olan ${lifePathNumber} ile uyumlu bir şekilde, yıldızların senin için hazırladığı büyük bir dönüşümü müjdeliyor.`;
+
+    return reading;
   }, [selectedCards, zodiac, userData.name, lifePathNumber, readingType, aiInterpretation]);
 
   const localReading = useMemo(() => {
@@ -380,6 +407,9 @@ export default function App() {
           <button onClick={() => setScreen('landing')} className={`text-[10px] uppercase tracking-[0.2em] font-bold transition-all ${screen === 'landing' ? 'text-accent' : 'text-text-dim hover:text-accent'}`}>Kehanet</button>
           <button onClick={() => setScreen('history')} className={`text-[10px] uppercase tracking-[0.2em] font-bold transition-all ${screen === 'history' ? 'text-accent' : 'text-text-dim hover:text-accent'}`}>Geçmiş</button>
           <button onClick={() => setScreen('library')} className={`text-[10px] uppercase tracking-[0.2em] font-bold transition-all ${screen === 'library' ? 'text-accent' : 'text-text-dim hover:text-accent'}`}>Kütüphane</button>
+          <button onClick={() => setShowSettings(true)} className="p-2 rounded-full hover:bg-surface transition-colors text-text-dim hover:text-accent" title="Ayarlar">
+            <Settings className="w-4 h-4" />
+          </button>
           <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-surface transition-colors text-text-dim hover:text-accent">
             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
@@ -391,6 +421,13 @@ export default function App() {
         <NavItem id="landing" icon={Sparkles} label="Kehanet" />
         <NavItem id="history" icon={History} label="Geçmiş" />
         <NavItem id="library" icon={BookOpen} label="Bilgi" />
+        <button
+          onClick={() => setShowSettings(true)}
+          className="flex flex-col items-center gap-1 text-text-dim hover:text-accent/60 transition-all"
+        >
+          <Settings className="w-5 h-5" />
+          <span className="text-[9px] uppercase tracking-wider font-semibold">Ayarlar</span>
+        </button>
         <button
           onClick={toggleTheme}
           className="flex flex-col items-center gap-1 text-text-dim hover:text-accent/60 transition-all"
@@ -683,8 +720,17 @@ export default function App() {
                           <RotateCcw className="w-4 h-4" /> Yeniden Başla
                         </button>
                         {!aiInterpretation && !isAiLoading && (
-                          <button onClick={getAiReading} className="btn-primary flex-1 min-w-[180px] flex items-center justify-center gap-2 bg-gradient-to-r from-accent to-accent/60 text-bg px-4">
-                            <Sparkles className="w-4 h-4" /> AI Bilge Yorumu Al
+                          <button 
+                            onClick={getAiReading} 
+                            className="btn-primary flex-1 min-w-[180px] flex items-center justify-center gap-2 bg-gradient-to-r from-accent to-accent/60 text-bg px-4 group relative"
+                          >
+                            <Sparkles className="w-4 h-4" /> 
+                            AI Bilge Yorumu Al
+                            {!customApiKey && !process.env.GEMINI_API_KEY && (
+                              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface border border-border px-2 py-1 rounded text-[8px] text-text-dim opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                Ücretsiz anahtar gerekli
+                              </span>
+                            )}
                           </button>
                         )}
                         <button onClick={handleWhatsAppShare} className="btn-primary flex-1 min-w-[180px] flex items-center justify-center gap-2 bg-[#25D366] border-[#25D366] hover:bg-[#128C7E] hover:border-[#128C7E] text-white px-4">
@@ -805,6 +851,58 @@ export default function App() {
                 ))}
               </div>
             </motion.div>
+          )}
+
+          {showSettings && (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-bg/95 backdrop-blur-xl">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="max-w-md w-full card-minimal p-8 md:p-10 rounded-[32px] relative"
+              >
+                <button onClick={() => setShowSettings(false)} className="absolute top-6 right-6 p-2 rounded-full bg-surface text-text-dim hover:text-text-bright transition-all">
+                  <X className="w-5 h-5" />
+                </button>
+                
+                <div className="space-y-8">
+                  <div className="text-center space-y-2">
+                    <h3 className="text-2xl font-serif font-bold">Kozmik <span className="italic text-accent">Ayarlar</span></h3>
+                    <p className="text-text-dim text-[10px] uppercase tracking-widest font-bold">API Yapılandırması</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest text-accent font-bold ml-1">Gemini API Key</label>
+                      <input
+                        type="password"
+                        value={customApiKey}
+                        onChange={(e) => setCustomApiKey(e.target.value)}
+                        placeholder="AI yorumu için anahtarınızı girin"
+                        className="input-minimal w-full"
+                      />
+                      <p className="text-[9px] text-text-dim italic leading-relaxed">
+                        * GitHub Pages üzerinde AI yorumu almak için kendi API anahtarınızı girmelisiniz. 
+                        <a 
+                          href="https://aistudio.google.com/app/apikey" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-accent hover:underline ml-1"
+                        >
+                          Buradan ücretsiz bir anahtar alabilirsiniz.
+                        </a>
+                      </p>
+                    </div>
+                    
+                    <button 
+                      onClick={() => saveApiKey(customApiKey)}
+                      className="btn-primary w-full"
+                    >
+                      Ayarları Kaydet
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
           )}
 
           {selectedHistoryItem && (
